@@ -53,6 +53,14 @@ def main():
         default=".",
         help="Path to temporary directory (default:.)",
     )
+    parser.add_argument(
+        "-t",
+        "--threads",
+        dest="threads",
+        type=int,
+        default=2,
+        help="Number of threads (default: 2)",
+    )
     parser.add_argument("--debug", action="store_true", help="Activate debug mode")
 
     args = parser.parse_args()
@@ -64,11 +72,12 @@ def main():
         format=FORMAT,
     )
 
+    print("")
     logging.info("Setting up..")
     args.wd = os.path.abspath(args.wd)
     args.GTF = os.path.abspath(args.GTF)
     if args.wd != "." and os.path.isdir(args.wd) and len(os.listdir(args.wd)) != 0:
-        logging.error("WD not empty! Halting..\n")
+        logging.error(f"Working directory {args.wd} is not empty. Halting.\n")
         sys.exit(1)
     os.makedirs(args.wd, exist_ok=True)
     par_path = os.path.join(args.wd, "simulation.par")
@@ -97,7 +106,18 @@ def main():
 
     logging.info("Running flux simulator..")
     flux = subprocess.run(
-        ["flux-simulator", "-t", "simulator", "-x", "-l", "-s", "-p", par_path],
+        [
+            "flux-simulator",
+            "-t",
+            "simulator",
+            "-x",
+            "-l",
+            "-s",
+            "-p",
+            par_path,
+            "--threads",
+            str(args.threads),
+        ],
         stdout=open("/dev/null", "w"),
         stderr=open(fluxlog_path, "w"),
     )
