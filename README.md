@@ -17,6 +17,8 @@ python3 ../asflux.py 21.fa 21.pc.small.gtf --wd out -l 100 -r 100
 
 ### TODO
 - [ ] AS events simulation
+  - [ ] user-defined probabilities for events
+  - [ ] improve choice of genes that undergo alternative splicing
 - [ ] LSV simulation
 - [ ] replicates
 
