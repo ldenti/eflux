@@ -1,29 +1,32 @@
 # asflux
 
-Python wrapper to run [flux simulator](https://confluence.sammeth.net/display/SIM/Home).
+Python wrapper to enhance [flux simulator](https://confluence.sammeth.net/display/SIM/Home).
 
 The goals of this project are:
 * improve flux simulator userfriendliness
 * add AS/LSV simulation (similarly to [AsimulatoR](https://github.com/biomedbigdata/ASimulatoR))
 * add support for replicates
 
-The prerequisites are [biopython](https://biopython.org/) and flux-simulator (binary in `$PATH` variable).
+### Installation
+```
+git clone https://github.com/ldenti/asflux.git
+cd asflux
+mamba create -c bioconda -n asflux biopython gffutils suppa openjdk=8.0.332 flux-simulator
+```
 
+### Example
 ```
 cd example
 tar xvfz data.tar.gz
-python3 ../asflux.py 21.fa 21.pc.small.gtf --wd out -l 100 -r 100 
+python3 ../asflux.py 21.fa 21.pc.small.gtf -n 10
 ```
 
 ### TODO
-- [ ] AS events simulation
-  - [ ] user-defined probabilities for events
-  - [ ] improve choice of genes that undergo alternative splicing
-- [ ] LSV simulation
-- [ ] replicates
-
-Nice things to add:
-- [ ] allows user to define custom path for flux-simulator
+- [ ] 2 conditions + replicates
+- [ ] allows user to define custom path for suppa.py and flux-simulator
 - [ ] more arguments (e.g., polyA, single-end, other flux parameters to tweak simulation)
-- [ ] single-end reads support
+- [ ] allow chromosomes directory
 - [ ] simulate from given .pro
+- [ ] improve choice of genes that undergo alternative splicing
+- [ ] multiple events per gene
+- [ ] LSV simulation
