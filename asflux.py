@@ -1,158 +1,90 @@
-import sys, os
-import argparse
+import sys
+import os
 import logging
-from datetime import datetime
-import subprocess
 
-from Bio import SeqIO
+from cli import get_args
+from utils import split_fa, open_gtf, split_fq
+from events import run_suppa, get_events, select_events, split_annotation
+from reads import create_par, run_flux
 
+FORMAT = "[%(asctime)s] %(message)s"
+logging.basicConfig(stream=sys.stderr, format=FORMAT, level=logging.INFO)
 
-def time():
-    return datetime.now().strftime("%B %d %Y - %H:%M:%S")
-
-
-def split_fa(fapath, odir):
-    for record in SeqIO.parse(fapath, "fasta"):
-        outfa = open(os.path.join(odir, "{}.fa".format(record.id)), "w")
-        SeqIO.write(record, outfa, "fasta")
-        outfa.close()
+VERSION = "0.0.2"
 
 
 def main():
-    parser = argparse.ArgumentParser(description="asflux")
+    if "--version" in sys.argv:
+        print(f"ASFlux v{VERSION}")
+        sys.exit(0)
 
-    parser.add_argument("FA", type=str, help="Path to reference (FASTA)")
-    parser.add_argument("GTF", type=str, help="Path to annotation (GTF)")
-    parser.add_argument(
-        "--wd",
-        dest="wd",
-        type=str,
-        default=".",
-        help="Path to working directory (default:.)",
-    )
-    parser.add_argument(
-        "-l",
-        "--length",
-        dest="l",
-        type=int,
-        default=100,
-        help="Read length (default: 100)",
-    )
-    parser.add_argument(
-        "-r",
-        "--reads",
-        dest="r",
-        type=int,
-        default=5000000,
-        help="Number of reads (default: 5000000)",
-    )
-    parser.add_argument(
-        "--tmp",
-        dest="tmpd",
-        type=str,
-        default=".",
-        help="Path to temporary directory (default:.)",
-    )
-    parser.add_argument(
-        "-t",
-        "--threads",
-        dest="threads",
-        type=int,
-        default=2,
-        help="Number of threads (default: 2)",
-    )
-    parser.add_argument("--debug", action="store_true", help="Activate debug mode")
+    args = get_args()
 
-    args = parser.parse_args()
+    if args.verbose:
+        logging.getLogger().setLevel(logging.DEBUG)
+    args.wd = os.path.join(os.getcwd(), args.wd)
+    args.tmpd = os.path.join(os.getcwd(), args.tmpd)
 
-    FORMAT = f"[{time()}] %(message)s"
-    logging.basicConfig(
-        stream=sys.stderr,
-        level=logging.DEBUG if args.debug else logging.INFO,
-        format=FORMAT,
-    )
-
-    print("")
-    logging.info("Setting up..")
-    args.wd = os.path.abspath(args.wd)
-    args.GTF = os.path.abspath(args.GTF)
-    if args.wd != "." and os.path.isdir(args.wd) and len(os.listdir(args.wd)) != 0:
-        logging.error(f"Working directory {args.wd} is not empty. Halting.\n")
+    try:
+        os.makedirs(args.wd)
+    except FileExistsError:
+        logging.critical("Output folder already exits.")
+        logging.critical("Halting..\n")
         sys.exit(1)
-    os.makedirs(args.wd, exist_ok=True)
-    par_path = os.path.join(args.wd, "simulation.par")
-    refs_path = os.path.join(args.wd, "references")
-    os.makedirs(refs_path, exist_ok=True)
-    fluxlog_path = os.path.join(args.wd, "flux.log")
+    if not os.path.isdir(args.tmpd):
+        os.makedirs(args.tmpd)
+
+    gtf1_path = args.GTF
+    gtf2_path = ""
+    if not args.simulation:
+        logging.info("Running SUPPA2 to generate events..")
+        suppa2_wd = os.path.join(args.wd, "suppa2")
+        os.makedirs(suppa2_wd)
+        retcode, suppa2log_path = run_suppa(args.GTF, suppa2_wd, args.events.split(","))
+        if retcode != 0:
+            logging.critical(f"SUPPA2 did not run succesfully (return code {retcode}).")
+            logging.critical(f"See {suppa2log_path} for more details.")
+            logging.critical("Halting..\n")
+            sys.exit(1)
+        logging.critical("SUPPA2 ran succesfully.")
+        logging.info("Getting events from SUPPA2 output..")
+        events = get_events(suppa2_wd)
+        logging.info("Selecting events..")
+        events = select_events(events, args.P)
+
+        logging.info("Opening input annotation..")
+        gtf = open_gtf(args.GTF)
+
+        logging.info("Splitting annotations..")
+        gtf1_path, gtf2_path = split_annotation(gtf, args.wd, events)
+
+    logging.info("Splitting reference..")
+    chroms_path = os.path.join(args.wd, "references")
+    os.makedirs(chroms_path, exist_ok=True)
+    split_fa(args.FA, chroms_path)
+
+    flux_wd = os.path.join(args.wd, "flux")
+    os.makedirs(flux_wd, exist_ok=True)
+
+    logging.info("Populating PAR file..")
+    create_par(gtf1_path, chroms_path, args.tmpd, args.n, args.l, flux_wd)
+
+    logging.info("Running flux simulator..")
+    retcode, fluxlog_path = run_flux(flux_wd, args.threads)
+    if retcode > 0:
+        logging.critical(f"Flux did not run succesfully (return code {retcode}).")
+        logging.critical(f"See {fluxlog_path} for more details.")
+        logging.critical("Halting..\n")
+        sys.exit(1)
+
+    reads_path = os.path.join(flux_wd, "simulation.fastq")
     ofq1_path = os.path.join(args.wd, "sample_1.fq")
     ofq2_path = os.path.join(args.wd, "sample_2.fq")
 
-    logging.info("Splitting the reference..")
-    split_fa(args.FA, refs_path)
-
-    logging.info("Populating PAR file..")
-    with open(par_path, "w") as par:
-        par.write(f"REF_FILE_NAME\t{args.GTF}\n")
-        par.write(f"GEN_DIR\t{refs_path}\n")
-        par.write(f"TMP_DIR\t{args.tmpd}\n")
-        par.write("POLYA_SCALE\tNaN\n")
-        par.write("POLYA_SHAPE\tNaN\n")
-        par.write(f"READ_NUMBER\t{args.r}\n")
-        par.write(f"READ_LENGTH\t{args.l}\n")
-        par.write("PAIRED_END\tYES\n")
-        par.write("FASTA\tYES\n")
-        err_model = "76" if args.l >= 76 else "35"
-        par.write(f"ERR_FILE\t{err_model}\n")
-
-    logging.info("Running flux simulator..")
-    flux = subprocess.run(
-        [
-            "flux-simulator",
-            "-t",
-            "simulator",
-            "-x",
-            "-l",
-            "-s",
-            "-p",
-            par_path,
-            "--threads",
-            str(args.threads),
-        ],
-        stdout=open("/dev/null", "w"),
-        stderr=open(fluxlog_path, "w"),
-    )
-    if flux.returncode > 0:
-        logging.error(
-            f"Flux crashed (return code {flux.returncode}). See {fluxlog_path} for more info. Halting..\n"
-        )
-        sys.exit(1)
-
     logging.info("Splitting reads..")
-    reads_path = os.path.join(args.wd, "simulation.fastq")
-    ofq1 = open(ofq1_path, "w")
-    ofq2 = open(ofq2_path, "w")
-    records1 = []
-    records2 = []
-    for record in SeqIO.parse(reads_path, "fastq"):
-        if record.id[-1] == "1":
-            records1.append(record)
-        else:
-            records2.append(record)
-        if len(records1) > 5000:
-            SeqIO.write(records1, ofq1, "fastq")
-            records1 = []
-        if len(records2) > 5000:
-            SeqIO.write(records2, ofq2, "fastq")
-            records2 = []
-    if len(records1) > 0:
-        SeqIO.write(records1, ofq1, "fastq")
-        records1 = []
-    if len(records2) > 0:
-        SeqIO.write(records2, ofq2, "fastq")
-        records2 = []
-    ofq1.close()
-    ofq2.close()
+    split_fq(reads_path, ofq1_path, ofq2_path)
     logging.info(f"Samples: {ofq1_path} and {ofq2_path}.")
+
     logging.info("Done.\n")
 
 
