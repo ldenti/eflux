@@ -22,7 +22,7 @@ python3 ../eflux.py 21.fa 21.pc.small.gtf -n 10
 ```
 
 ### TODO
-- [ ] 2 conditions + replicates
+- [X] ~2 conditions + replicates~
 - [ ] allows user to define custom path for suppa.py and flux-simulator
 - [ ] more arguments (e.g., polyA, single-end, other flux parameters to tweak simulation)
 - [X] ~allow chromosomes directory~

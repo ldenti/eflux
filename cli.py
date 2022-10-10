@@ -46,7 +46,13 @@ def get_args():
         type=int,
         help="Probability to select a gene (default: 70)",
     )
-
+    parser.add_argument(
+        "--replicates",
+        dest="replicates",
+        default=1,
+        type=int,
+        help="Number of replicates (default: 1)",
+    )
     parser.add_argument(
         "--simulation",
         dest="simulation",

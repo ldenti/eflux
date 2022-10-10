@@ -40,3 +40,54 @@ def run_flux(wd, threads):
         stderr=open(fluxlog_path, "w"),
     )
     return flux.returncode, fluxlog_path
+
+
+def run_flux_x2(wd1, wd2, threads):
+    threads = max(1, threads / 2)
+
+    par1_path = os.path.join(wd1, "simulation.par")
+    fluxlog1_path = os.path.join(wd1, "flux.log")
+    fluxout1_path = os.path.join(wd1, "flux.out")
+    par2_path = os.path.join(wd2, "simulation.par")
+    fluxlog2_path = os.path.join(wd2, "flux.log")
+    fluxout2_path = os.path.join(wd2, "flux.out")
+
+    flux1_cmd = [
+        "flux-simulator",
+        "-t",
+        "simulator",
+        "-x",
+        "-l",
+        "-s",
+        "-p",
+        par1_path,
+        "--threads",
+        f"{threads}",
+    ]
+    flux2_cmd = [
+        "flux-simulator",
+        "-t",
+        "simulator",
+        "-x",
+        "-l",
+        "-s",
+        "-p",
+        par2_path,
+        "--threads",
+        f"{threads}",
+    ]
+
+    flux1 = subprocess.Popen(
+        flux1_cmd,
+        stdout=open(fluxout1_path, "w"),
+        stderr=open(fluxlog1_path, "w"),
+    )
+    flux2 = subprocess.Popen(
+        flux2_cmd,
+        stdout=open(fluxout2_path, "w"),
+        stderr=open(fluxlog2_path, "w"),
+    )
+    flux1.wait()
+    flux2.wait()
+
+    return flux1.returncode, fluxlog1_path, flux2.returncode, fluxlog2_path
