@@ -28,5 +28,6 @@ python3 ../eflux.py 21.fa 21.pc.small.gtf -n 10
 - [X] ~allow chromosomes directory~
 - [ ] simulate from given .pro
 - [ ] improve choice of genes that undergo alternative splicing
+- [ ] allows user to define distribution of events
 - [ ] multiple events per gene
 - [ ] LSV simulation
