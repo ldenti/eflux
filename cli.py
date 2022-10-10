@@ -2,7 +2,7 @@ import argparse
 
 
 def get_args():
-    parser = argparse.ArgumentParser(description="ASFlux")
+    parser = argparse.ArgumentParser(description="eflux - Enhanced FLUX-simulator")
     parser.add_argument(
         "FA",
         type=str,
@@ -89,16 +89,23 @@ def get_args():
 
     # Directories
     parser.add_argument(
+        "--chroms",
+        dest="chroms",
+        default=None,
+        type=str,
+        help="Path to chromosome directory (default: None)",
+    )
+    parser.add_argument(
         "--out",
         dest="wd",
-        default="asflux-wd",
+        default="eflux-wd",
         type=str,
-        help="Output directory (default: asflux-wd)",
+        help="Output directory (default: eflux-wd)",
     )
     parser.add_argument(
         "--tmp",
         dest="tmpd",
-        default="asflux-tmp",
+        default="eflux-tmp",
         type=str,
         help="Temporary directory (default: asflux-tmp)",
     )

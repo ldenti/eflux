@@ -15,7 +15,7 @@ VERSION = "0.0.2"
 
 def main():
     if "--version" in sys.argv:
-        print(f"ASFlux v{VERSION}")
+        print(f"eflux v{VERSION}")
         sys.exit(0)
 
     args = get_args()
@@ -58,10 +58,14 @@ def main():
         logging.info("Splitting annotations..")
         gtf1_path, gtf2_path = split_annotation(gtf, args.wd, events)
 
-    logging.info("Splitting reference..")
-    chroms_path = os.path.join(args.wd, "references")
-    os.makedirs(chroms_path, exist_ok=True)
-    split_fa(args.FA, chroms_path)
+    chroms_path = args.chroms
+    if chroms_path == None:
+        chroms_path = os.path.join(args.wd, "references")
+        logging.info(f"Splitting reference to {chroms_path}..")
+        os.makedirs(chroms_path, exist_ok=True)
+        split_fa(args.FA, chroms_path)
+    else:
+        logging.info(f"Using {chroms_path}..")
 
     flux_wd = os.path.join(args.wd, "flux")
     os.makedirs(flux_wd, exist_ok=True)
