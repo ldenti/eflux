@@ -34,17 +34,17 @@ def get_args():
         "-n",
         "--nreads",
         dest="n",
-        default=1000,
-        type=int,
-        help="Number of reads (default: 1000)",
+        default=1e6,
+        type=float,
+        help="Number of reads (default: 1000000)",
     )
     parser.add_argument(
         "-p",
         "--prob",
         dest="P",
-        default=100,
+        default=70,
         type=int,
-        help="Probability to select a gene (default: 100)",
+        help="Probability to select a gene (default: 70)",
     )
 
     parser.add_argument(
