@@ -12,6 +12,7 @@ The goals of this project are:
 git clone https://github.com/ldenti/eflux.git
 cd eflux
 mamba create -c bioconda -n eflux biopython gffutils suppa openjdk=8.0.332 flux-simulator
+conda activate eflux
 ```
 
 ### Example
@@ -23,8 +24,9 @@ python3 ../eflux.py 21.fa 21.pc.small.gtf -n 10
 
 ### TODO
 - [X] ~2 conditions + replicates~
+- [ ] adds X unused transcripts to make things harder
 - [ ] allows user to define custom path for suppa.py and flux-simulator
-- [ ] more arguments (e.g., polyA, single-end, other flux parameters to tweak simulation)
+- [ ] more arguments (e.g., polyA and other flux parameters to tweak simulation)
 - [X] ~allow chromosomes directory~
 - [ ] simulate from given .pro
 - [ ] improve choice of genes that undergo alternative splicing

@@ -1,0 +1,49 @@
+configfile: "config.yaml"
+
+
+samples = {}
+for i, pair in enumerate(config["conditions"], 1):
+    fq1, fq2 = pair.split(",")
+    samples[i] = (fq1, fq2)
+print(samples)
+T = config["threads"]
+
+
+rule star_index:
+    input:
+        fa=",",
+        gtf=",",
+    output:
+        directory(),
+    threads: T
+    shell:
+        """
+        STAR --runThreadN {threads} --runMode genomeGenerate --genomeDir {output.dir} --genomeFastaFiles {input.fa} --sjdbGTFfile {input.gtf} --sjdbOverhang 99 --genomeSAindexNbases 11
+        """
+
+
+rule star_align:
+    input:
+        index=";",
+        fq1=";",
+        fq2=";",
+    output:
+        bam=";",
+    params:
+        prefix=";",
+    threads: T
+    shell:
+        """
+        STAR --runThreadN {threads} --genomeDir {input.index} --readFilesIn {input.fq1} {input.fq2} --outFileNamePrefix {params.prefix} --outSAMtype BAM SortedByCoordinate
+        """
+
+
+# rule rmats:
+#     input:
+
+#     output:
+#     threads: T
+#     shell:
+#         """
+#         rmats.py --b1 /path/to/b1.txt --b2 /path/to/b2.txt --gtf /path/to/the.gtf -t paired --readLength 100 --nthread {threads} --od /path/to/output --tmp /path/to/tmp_output
+#         """

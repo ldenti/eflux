@@ -55,17 +55,18 @@ def select_events(events, P):
 
 def split_annotation(gtf, WD, events):
     events_log = open(os.path.join(WD, "events.txt"), "w")
-    anngtf_path = os.path.join(WD, "annotation.gtf")
-    simgtf_path = os.path.join(WD, "simulation.gtf")
-    anngtf = open(anngtf_path, "w")
-    simgtf = open(simgtf_path, "w")
+    c1gtf_path = os.path.join(WD, "condition1.gtf")
+    c2gtf_path = os.path.join(WD, "condition2.gtf")
+    ugtf_path = os.path.join(WD, "unused.gtf")
+    c1gtf = open(c1gtf_path, "w")
+    c2gtf = open(c2gtf_path, "w")
+    ugtf = open(ugtf_path, "w")
     for gene in gtf.features_of_type("gene"):
-        anngtf.write(str(gene) + "\n")
-        simgtf.write(str(gene) + "\n")
         chrom = gene.seqid
         gidx = gene.id
-        annotated_transcripts = set()
-        simulation_transcripts = set()
+        # Split transcripts per condition
+        c1_transcripts = set()
+        c2_transcripts = set()
         if gidx in events[chrom]:
             event = events[chrom][gidx]
             eidx = event[0]
@@ -104,13 +105,13 @@ def split_annotation(gtf, WD, events):
                 T1 = f"{intron1[0]+1}-{intron1[1]-1}|{intron1[1]}-{intron2[0]}|{intron2[0]+1}-{intron2[1]-1}"
                 T2 = f"{intron3[0]+1}-{intron3[1]-1}|{intron3[1]}-{intron4[0]}|{intron4[0]+1}-{intron4[1]-1}"
 
-            annotated_transcripts = event[1]
-            simulation_transcripts = event[2]
+            c1_transcripts = event[1]
+            c2_transcripts = event[2]
             i = random.randint(1, 2)
             if i == 2:
-                annotated_transcripts, simulation_transcripts = (
-                    simulation_transcripts,
-                    annotated_transcripts,
+                c1_transcripts, c2_transcripts = (
+                    c2_transcripts,
+                    c1_transcripts,
                 )
                 T2, T1 = T1, T2
                 if _etype == "SE":
@@ -127,35 +128,44 @@ def split_annotation(gtf, WD, events):
                 event[0],
                 T1,
                 T2,
-                ",".join(annotated_transcripts),
-                ",".join(simulation_transcripts),
+                ",".join(c1_transcripts),
+                ",".join(c2_transcripts),
                 sep="\t",
                 file=events_log,
             )
+
+        # Dump GTFs
+        unused = len(c1_transcripts) == 0 and len(c2_transcripts) == 0
+        if unused:
+            # no event
+            ugtf.write(str(gene) + "\n")
+        else:
+            c1gtf.write(str(gene) + "\n")
+            c2gtf.write(str(gene) + "\n")
 
         for transcript in gtf.children(
             gene, featuretype="transcript", order_by="start"
         ):
             tidx = transcript.id
-            anno_flag = len(annotated_transcripts) == 0 or tidx in annotated_transcripts
-            sim_flag = (
-                len(simulation_transcripts) == 0 or tidx in simulation_transcripts
-            )
-            # if both are false, then transcript is not part of the event
-            if not anno_flag and not sim_flag:
-                anno_flag = True
-                sim_flag = True
-            if anno_flag:
-                anngtf.write(str(transcript) + "\n")
-            if sim_flag:
-                simgtf.write(str(transcript) + "\n")
+            inc1, inc2 = tidx in c1_transcripts, tidx in c2_transcripts
+            if unused:
+                ugtf.write(str(transcript) + "\n")
+            else:
+                if inc1:
+                    c1gtf.write(str(transcript) + "\n")
+                elif inc2:
+                    c2gtf.write(str(transcript) + "\n")
             for feature in gtf.children(transcript, order_by="start"):
-                if anno_flag:
-                    anngtf.write(str(feature) + "\n")
-                if sim_flag:
-                    simgtf.write(str(feature) + "\n")
-    anngtf.close()
-    simgtf.close()
+                if unused:
+                    ugtf.write(str(transcript) + "\n")
+                else:
+                    if inc1:
+                        c1gtf.write(str(feature) + "\n")
+                    elif inc2:
+                        c2gtf.write(str(feature) + "\n")
+    ugtf.close()
+    c1gtf.close()
+    c2gtf.close()
     events_log.close()
 
-    return simgtf_path, anngtf_path
+    return c1gtf_path, c2gtf_path
